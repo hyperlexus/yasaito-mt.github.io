@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hangul Trainer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+            touch-action: manipulation; /* fix mobile zoom */
+        }
+        .hangul-char { 
+            font-family: 'Noto Sans KR', sans-serif; 
+        }
+        .mode-btn {
+            cursor: pointer;
+            user-select: none; /* noselect */
+        }
+        .focus-cyan-500:focus {
+            --tw-ring-opacity: 1;
+            --tw-ring-color: rgb(6 182 212 / var(--tw-ring-opacity));
+            --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+            --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(3px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+            box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+        }
+        .mode-btn.active {
+            background-color: #06b6d4;
+            color: white;
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.5);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-2xl mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-4xl md:text-5xl font-bold text-cyan-400">한글 트레이너</h1>
+            <p class="text-gray-400 mt-2">너는 그럴 자질이 있니?</p>
+        </header>
+
+        <!-- cancer -->
+        <div id="mode-select" class="flex flex-wrap justify-center gap-3 mb-6">
+            <button data-mode="easy" class="mode-btn text-sm sm:text-base bg-gray-700 hover:bg-gray-600 transition-all duration-200 font-semibold py-2 px-4 rounded-lg">안락한</button>
+            <button data-mode="medium" class="mode-btn text-sm sm:text-base bg-gray-700 hover:bg-gray-600 transition-all duration-200 font-semibold py-2 px-4 rounded-lg">중간</button>
+            <button data-mode="hard" class="mode-btn text-sm sm:text-base bg-gray-700 hover:bg-gray-600 transition-all duration-200 font-semibold py-2 px-4 rounded-lg">곤란한</button>
+            <button data-mode="insane" class="mode-btn text-sm sm:text-base bg-gray-700 hover:bg-gray-600 transition-all duration-200 font-semibold py-2 px-4 rounded-lg">악몽</button>
+        </div>
+
+        <main id="game-area" class="bg-gray-800 p-6 md:p-8 rounded-2xl shadow-2xl text-center transition-opacity duration-500 opacity-0 pointer-events-none">
+            <div id="character-display" class="hangul-char text-7xl sm:text-8xl md:text-9xl font-bold mb-4 h-28 md:h-32 flex items-center justify-center text-white transition-transform duration-200">
+                <span class="opacity-50">모드 선택</span>
+            </div>
+
+            <input type="text" id="answer-input" placeholder="여기에 단어를 입력하세요" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="w-full max-w-md mx-auto bg-gray-900 border-2 border-gray-600 rounded-lg py-3 px-4 text-center text-xl text-white outline-none focus-cyan-500 transition-all duration-200" disabled>
+
+            <!-- PLEASE WORK INSHALLAH JUST WORK -->
+            <div id="stats" class="grid grid-cols-2 sm:flex sm:justify-center gap-4 md:gap-8 mt-6 text-lg text-gray-300">
+                <div class="flex flex-col items-center">
+                    <span class="text-sm text-gray-400">득점</span>
+                    <span id="score" class="font-semibold text-xl">0/0</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-sm text-gray-400">정확성</span>
+                    <span id="accuracy" class="font-semibold text-xl">0%</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-sm text-gray-400">시간</span>
+                    <span id="timer" class="font-semibold text-xl">0s</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-sm text-gray-400">시간/문자</span>
+                    <span id="time-per-char" class="font-semibold text-xl">0s</span>
+                </div>
+            </div>
+
+            <button id="stop-btn" class="mt-8 bg-red-600 hover:bg-red-700 transition-colors duration-200 font-bold py-2 px-8 rounded-lg text-white" style="display: none;">멈추다</button>
+        </main>
+
+        <div id="results-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center p-4 z-10">
+            <div class="bg-gray-800 text-center p-8 rounded-2xl shadow-2xl max-w-md w-full animate-fade-in">
+                <h2 class="text-3xl font-bold text-cyan-400 mb-4">도전 완료!</h2>
+                <div class="grid grid-cols-2 gap-4 text-left my-6">
+                    <div><p class="text-gray-400">최종 점수:</p><p id="final-score" class="text-2xl font-semibold"></p></div>
+                    <div><p class="text-gray-400">정확성:</p><p id="final-accuracy" class="text-2xl font-semibold"></p></div>
+                    <div><p class="text-gray-400">총 시간:</p><p id="final-time" class="text-2xl font-semibold"></p></div>
+                    <div><p class="text-gray-400">평균 시간/문자:</p><p id="final-avg-time" class="text-2xl font-semibold"></p></div>
+                </div>
+                <button id="restart-btn" class="w-full bg-cyan-500 hover:bg-cyan-600 transition-colors duration-200 font-bold py-3 px-6 rounded-lg text-white">새로운 게임</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const modeSelect = document.getElementById('mode-select');
+            const gameArea = document.getElementById('game-area');
+            const characterDisplay = document.getElementById('character-display');
+            const answerInput = document.getElementById('answer-input');
+            const stopBtn = document.getElementById('stop-btn');
+            
+            const scoreEl = document.getElementById('score');
+            const accuracyEl = document.getElementById('accuracy');
+            const timerEl = document.getElementById('timer');
+            const timePerCharEl = document.getElementById('time-per-char');
+
+            const resultsModal = document.getElementById('results-modal');
+            const finalScoreEl = document.getElementById('final-score');
+            const finalAccuracyEl = document.getElementById('final-accuracy');
+            const finalTimeEl = document.getElementById('final-time');
+            const finalAvgTimeEl = document.getElementById('final-avg-time');
+            const restartBtn = document.getElementById('restart-btn');
+
+            // ty google for telling me i need to hardcode this
+            const HANGUL_START_CODE = 44032;
+            const INITIAL_CONSONANTS = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅅ','ㅆ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+            const VOWELS = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+            const FINAL_CONSONANTS = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+            const JAMO_STANDALONE_MAP = {'ㄱ':'g','ㄲ':'kk','ㄴ':'n','ㄷ':'d','ㄸ':'tt','ㄹ':'r','ㅁ':'m','ㅂ':'b','ㅃ':'pp','ㅅ':'s','ㅆ':'ss','ㅇ':'ng','ㅈ':'j','ㅉ':'jj','ㅊ':'ch','ㅋ':'k','ㅌ':'t','ㅍ':'p','ㅎ':'h','ㅏ':'a','ㅐ':'ae','ㅑ':'ya','ㅒ':'yae','ㅓ':'eo','ㅔ':'e','ㅕ':'yeo','ㅖ':'ye','ㅗ':'o','ㅘ':'wa','ㅙ':'wae','ㅚ':'oe','ㅛ':'yo','ㅜ':'u','ㅝ':'wo','ㅞ':'we','ㅟ':'wi','ㅠ':'yu','ㅡ':'eu','ㅢ':'ui','ㅣ':'i'};
+
+            // such a fun language icl
+            const ROMANIZATION_MAP = {
+                initial: ['g','kk','n','d','tt','r','m','b','pp','s','ss','','j','jj','ch','k','t','p','h'],
+                vowel: ['a','ae','ya','yae','eo','e','yeo','ye','o','wa','wae','oe','yo','u','wo','we','wi','yu','eu','ui','i'],
+                final: ['','g','kk','gs','n','nj','nh','d','l','lg','lm','lb','ls','lt','lp','lh','m','b','bs','s','ss','ng','j','ch','k','t','p','h']
+            };
+
+            let state = {
+                isActive: false,
+                mode: null,
+                score: 0,
+                attempts: 0,
+                startTime: null,
+                timerInterval: null,
+                currentHangul: '',
+                currentRomanization: ''
+            };
+
+            // hangul -> english
+            function romanize(hangulString) {
+                let result = '';
+                for (const char of hangulString) {
+                    const charCode = char.charCodeAt(0);
+                    if (charCode >= HANGUL_START_CODE && charCode < (HANGUL_START_CODE + 11172)) {
+                        const code = charCode - HANGUL_START_CODE;
+                        const finalIndex = code % 28;
+                        const vowelIndex = Math.floor((code % 588) / 28);
+                        const initialIndex = Math.floor(code / 588);
+                        
+                        result += ROMANIZATION_MAP.initial[initialIndex] +
+                            ROMANIZATION_MAP.vowel[vowelIndex] +
+                            (finalIndex > 0 ? ROMANIZATION_MAP.final[finalIndex] : '');
+                    } else {
+                        result += JAMO_STANDALONE_MAP[char] || '';
+                    }
+                }
+                return result;
+            }
+
+            // random string
+            function generateCharacter() {
+                let char = '';
+                switch (state.mode) {
+                    case 'easy':
+                        const allJamo = [...INITIAL_CONSONANTS, ...VOWELS];
+                        char = allJamo[Math.floor(Math.random() * allJamo.length)];
+                        break;
+                    case 'medium': // kv, thanks google
+                        const i_med = Math.floor(Math.random() * INITIAL_CONSONANTS.length);
+                        const v_med = Math.floor(Math.random() * VOWELS.length);
+                        char = String.fromCharCode(HANGUL_START_CODE + i_med * 588 + v_med * 28);
+                        break;
+                    case 'hard': // kvk
+                        const i_hard = Math.floor(Math.random() * INITIAL_CONSONANTS.length);
+                        const v_hard = Math.floor(Math.random() * VOWELS.length);
+                        const f_hard = Math.floor(Math.random() * (FINAL_CONSONANTS.length -1)) + 1; // 왜 안될까??????
+                        char = String.fromCharCode(HANGUL_START_CODE + i_hard * 588 + v_hard * 28 + f_hard);
+                        break;
+                    case 'insane': // 5 bc im too lazy to change the css to allow for more
+                        for (let i = 0; i < 5; i++) {
+                            const i_ins = Math.floor(Math.random() * INITIAL_CONSONANTS.length);
+                            const v_ins = Math.floor(Math.random() * VOWELS.length);
+                            const f_ins = Math.floor(Math.random() * FINAL_CONSONANTS.length);
+                            char += String.fromCharCode(HANGUL_START_CODE + i_ins * 588 + v_ins * 28 + f_ins); // 너무 조직적이야 :)
+                        }
+                        break;
+                }
+                state.currentHangul = char;
+                state.currentRomanization = romanize(char);
+                characterDisplay.textContent = state.currentHangul;
+            }
+
+            function updateStats() {
+                scoreEl.textContent = `${state.score}/${state.attempts}`;
+                const accuracy = state.attempts > 0 ? Math.round((state.score / state.attempts) * 100) : 0;
+                accuracyEl.textContent = `${accuracy}%`;
+
+                if (state.startTime) {
+                    const elapsedSeconds = ((Date.now() - state.startTime) / 1000).toFixed(1);
+                    timerEl.textContent = `${elapsedSeconds}s`;
+                    const avgTime = (elapsedSeconds / state.attempts).toFixed(2);
+                    timePerCharEl.textContent = `${avgTime}s`;
+                }
+            }
+
+            function checkAnswer() {
+                const userAnswer = answerInput.value.trim().toLowerCase();
+                if (!userAnswer) return;
+
+                if (!state.startTime) {
+                    state.startTime = Date.now();
+                    state.timerInterval = setInterval(updateStats, 100);
+                }
+
+                state.attempts++;
+                const isCorrect = userAnswer === state.currentRomanization;
+                
+                characterDisplay.classList.remove('text-green-400', 'text-red-400', 'scale-110');
+                void characterDisplay.offsetWidth; // makes no sense lol why
+
+                if (isCorrect) {
+                    state.score++;
+                    characterDisplay.classList.add('text-green-400');
+                } else {
+                    characterDisplay.classList.add('text-red-400');
+                    // pls
+                    characterDisplay.innerHTML = `${state.currentHangul} <span class="text-4xl md:text-5xl align-middle text-gray-400 font-normal ml-4">${state.currentRomanization}</span>`;
+                }
+                
+                characterDisplay.classList.add('scale-110');
+                setTimeout(() => {
+                    characterDisplay.classList.remove('text-green-400', 'text-red-400', 'scale-110');
+                    answerInput.value = '';
+                    generateCharacter();
+                    updateStats();
+                }, 1200);
+            }
+
+            function resetGame() {
+                state.isActive = false;
+                state.score = 0;
+                state.attempts = 0;
+                state.startTime = null;
+                clearInterval(state.timerInterval);
+                state.timerInterval = null;
+                
+                scoreEl.textContent = '0/0';
+                accuracyEl.textContent = '0%';
+                timerEl.textContent = '0s';
+                timePerCharEl.textContent = '0s';
+                answerInput.value = '';
+            }
+
+            function startGame(mode) {
+                resetGame();
+                state.isActive = true;
+                state.mode = mode;
+
+                gameArea.classList.remove('opacity-0', 'pointer-events-none');
+                answerInput.disabled = false;
+                stopBtn.style.display = 'inline-block';
+                
+                generateCharacter();
+                answerInput.focus();
+            }
+
+            function stopGame() {
+                if (!state.isActive) return;
+
+                const elapsedSeconds = state.startTime ? ((Date.now() - state.startTime) / 1000) : 0;
+                const accuracy = state.attempts > 0 ? Math.round((state.score / state.attempts) * 100) : 0;
+                const avgTime = state.attempts > 0 ? (elapsedSeconds / state.attempts).toFixed(2) : 0;
+                
+                finalScoreEl.textContent = `${state.score}/${state.attempts}`;
+                finalAccuracyEl.textContent = `${accuracy}%`;
+                finalTimeEl.textContent = `${elapsedSeconds.toFixed(1)}s`;
+                finalAvgTimeEl.textContent = `${avgTime}s`;
+
+                resultsModal.classList.remove('hidden');
+                resetGame();
+                answerInput.disabled = true;
+                stopBtn.style.display = 'none';
+                characterDisplay.innerHTML = `<span class="opacity-50">모드 선택</span>`;
+            }
+
+            modeSelect.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    const selectedMode = e.target.dataset.mode;
+                    if (state.mode === selectedMode && state.isActive) return;
+
+                    document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+                    e.target.classList.add('active');
+                    
+                    startGame(selectedMode);
+                }
+            });
+
+            answerInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    checkAnswer();
+                }
+            });
+
+            stopBtn.addEventListener('click', stopGame);
+            restartBtn.addEventListener('click', () => {
+                resultsModal.classList.add('hidden');
+                document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+                gameArea.classList.add('opacity-0', 'pointer-events-none');
+            });
+        });
+    </script>
+</body>
+</html>
