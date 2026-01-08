@@ -68,11 +68,31 @@
             line-height: 30px;
             filter: drop-shadow(0px 2px 2px rgba(0,0,0,0.5));
         }
+
+        .toggle-container {
+            margin: 10px 0;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .toggle-container label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
     </style>
 </head>
 <body>
 
 <div id="ui-container">
+
+    <div class="toggle-container">
+        <label>
+            <input type="checkbox" id="show-streets-toggle" onchange="toggleStreetView()">
+            Alle Straßen anzeigen
+        </label>
+    </div>
 
     <select id="town-select" onchange="loadSelectedTown()">
         <option value="" disabled selected>Wähle einen Bezirk</option>
@@ -117,6 +137,7 @@
         maxZoom: 20
     }).addTo(map);
 
+    const backgroundLayerGroup = L.layerGroup().addTo(map);  // for highlighting all possible streets
     const invisibleLayerGroup = L.layerGroup().addTo(map);  // for what is clickable
     const highlightLayerGroup = L.layerGroup().addTo(map);  // for correct/wrong shit
     const stationLayerGroup = L.layerGroup().addTo(map);  // feuerwehrhaus
@@ -145,6 +166,7 @@
         document.getElementById('next-btn').style.display = 'none';
         document.getElementById('feedback').innerText = '';
 
+        backgroundLayerGroup.clearLayers();
         invisibleLayerGroup.clearLayers();
         highlightLayerGroup.clearLayers();
         stationLayerGroup.clearLayers();
@@ -209,21 +231,33 @@
 
     // holy inefficient
     function drawInvisibleStreets() {
+        // backgroundLayerGroup.clearLayers();
         allStreetNames.forEach(name => {
             const segments = streetsByName[name];
             segments.forEach(latLngs => {
                 // yeahhhh lets just make this invisible or it looks like horse shit if zoomed out
-                const polyline = L.polyline(latLngs, {
+                const invisiblePoly = L.polyline(latLngs, {
                     color: 'transparent',
                     weight: 25,
                     opacity: 0,
                     className: 'clickable-street'
                 });
-                polyline.streetName = name;
-                polyline.on('click', onStreetClick);
-                invisibleLayerGroup.addLayer(polyline);
+                invisiblePoly.streetName = name;
+                invisiblePoly.on('click', onStreetClick);
+                invisibleLayerGroup.addLayer(invisiblePoly);
+
+                // 2. The Visible Background Line (thin, grey)
+                // We add 'interactive: false' so clicks pass through it to the invisible line below!
+                const visiblePoly = L.polyline(latLngs, {
+                    color: '#e0e0e0', // Very light grey
+                    weight: 4,
+                    opacity: 1,
+                    interactive: false // CRITICAL: This ensures you don't click the grey line instead of the invisible one
+                });
+                backgroundLayerGroup.addLayer(visiblePoly);
             });
         });
+        toggleStreetView(); // toggle it once so it's off when the checkbox is off
     }
 
     function highlightStreet(name, color) {
@@ -237,6 +271,21 @@
                 opacity: 0.8
             }).addTo(highlightLayerGroup);
         });
+    }
+
+    function toggleStreetView() {
+        const checkbox = document.getElementById('show-streets-toggle');
+        if (checkbox.checked) {
+            // checked
+            if (!map.hasLayer(backgroundLayerGroup)) {
+                map.addLayer(backgroundLayerGroup);
+            }
+        } else {
+            // unchecked
+            if (map.hasLayer(backgroundLayerGroup)) {
+                map.removeLayer(backgroundLayerGroup);
+            }
+        }
     }
 
     function nextRound() {
@@ -253,7 +302,7 @@
             return;
         }
 
-        allStreetNames.forEach(name => {highlightStreet(name, "#8848ff");})
+        // allStreetNames.forEach(name => {highlightStreet(name, "#c0c0c0");})
 
         const randomIndex = Math.floor(Math.random() * allStreetNames.length);
         currentTargetName = allStreetNames[randomIndex];
